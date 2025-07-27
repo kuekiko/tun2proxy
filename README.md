@@ -1,7 +1,7 @@
 [![tun2proxy](https://socialify.git.ci/tun2proxy/tun2proxy/image?description=1&language=1&name=1&stargazers=1&theme=Light)](https://github.com/tun2proxy/tun2proxy)
 
 # tun2proxy
-A tunnel interface for HTTP and SOCKS proxies on Linux, Android, macOS, iOS and Windows.
+A tunnel interface for HTTP, SOCKS and VMess proxies on Linux, Android, macOS, iOS and Windows.
 
 [![Crates.io](https://img.shields.io/crates/v/tun2proxy.svg)](https://crates.io/crates/tun2proxy)
 [![tun2proxy](https://docs.rs/tun2proxy/badge.svg)](https://docs.rs/tun2proxy)
@@ -15,6 +15,7 @@ A tunnel interface for HTTP and SOCKS proxies on Linux, Android, macOS, iOS and 
 - HTTP proxy support (unauthenticated, basic and digest auth)
 - SOCKS4 and SOCKS5 support (unauthenticated, username/password auth)
 - SOCKS4a and SOCKS5h support (through the virtual DNS feature)
+- VMess proxy support (V2Ray protocol)
 - Minimal configuration setup for routing all traffic
 - IPv4 and IPv6 support
 - GFW evasion mechanism for certain use cases (see [issue #35](https://github.com/tun2proxy/tun2proxy/issues/35))
@@ -72,7 +73,7 @@ You would then run the tool as follows:
 sudo ./target/release/tun2proxy-bin --setup --proxy "socks5://1.2.3.4:1080"
 ```
 
-Apart from SOCKS5, SOCKS4 and HTTP are supported.
+Apart from SOCKS5, SOCKS4, HTTP and VMess are supported.
 
 Note that if your proxy is a non-global IP address (e.g. because the proxy is provided by some tunneling tool running
 locally), you will additionally need to provide the public IP address of the server through which the traffic is
@@ -82,7 +83,7 @@ wish to make use of the automated setup feature.
 ## Manual Setup
 A standard setup, which would route all traffic from your system through the tunnel interface, could look as follows:
 ```shell
-# The proxy type can be either SOCKS4, SOCKS5 or HTTP.
+# The proxy type can be either SOCKS4, SOCKS5, HTTP or VMess.
 PROXY_TYPE=SOCKS5
 PROXY_IP=1.2.3.4
 PROXY_PORT=1080
@@ -125,6 +126,48 @@ you can execute the following command. The routes will be automatically deleted 
 sudo ip link del tun0
 ```
 
+## VMess Protocol Support
+
+VMess is a protocol developed by V2Ray project. To use VMess proxy with tun2proxy, you need to provide the UUID as the username in the proxy URL.
+
+### VMess Usage Examples
+
+```bash
+# Basic VMess proxy
+./target/release/tun2proxy-bin --proxy "vmess://550e8400-e29b-41d4-a716-446655440000@example.com:10086"
+
+# VMess with automated setup
+sudo ./target/release/tun2proxy-bin --setup --proxy "vmess://550e8400-e29b-41d4-a716-446655440000@example.com:10086"
+
+# VMess with custom tun interface
+./target/release/tun2proxy-bin --tun tun0 --proxy "vmess://550e8400-e29b-41d4-a716-446655440000@example.com:10086"
+```
+
+### VMess Configuration Notes
+
+- The UUID should be provided as the username part of the proxy URL
+- VMess supports multiple encryption methods: AES-128-CFB (default), AES-128-GCM, ChaCha20-Poly1305, None
+- Both TCP and UDP protocols are supported
+- The implementation follows the VMess protocol specification from V2Ray project
+- For detailed configuration options, see [VMess Technical Documentation](docs/VMESS_TECHNICAL.md)
+
+### VMess Advanced Configuration
+
+```bash
+# With specific encryption method
+./target/release/tun2proxy-bin --proxy "vmess://uuid@host:port?encryption=aes-128-gcm"
+
+# With security level
+./target/release/tun2proxy-bin --proxy "vmess://uuid@host:port?encryption=chacha20-poly1305&security=high"
+
+# With all options
+./target/release/tun2proxy-bin --proxy "vmess://uuid@host:port?encryption=aes-128-gcm&alterId=0&security=high&test=false"
+```
+
+### VMess Troubleshooting
+
+If you encounter issues with VMess connections, see the [VMess Troubleshooting Guide](docs/VMESS_TROUBLESHOOTING.md) for common problems and solutions.
+
 ## CLI
 ```
 Tunnel interface to proxy.
@@ -137,8 +180,9 @@ Arguments:
 
 Options:
   -p, --proxy <URL>                        Proxy URL in the form proto://[username[:password]@]host:port, where proto is one of
-                                           socks4, socks5, http. Username and password are encoded in percent encoding. For example:
+                                           socks4, socks5, http, vmess. Username and password are encoded in percent encoding. For example:
                                            socks5://myname:pass%40word@127.0.0.1:1080
+                                           vmess://uuid@127.0.0.1:1080
   -t, --tun <name>                         Name of the tun interface, such as tun0, utun4, etc. If this option is not provided, the
                                            OS will generate a random one
       --tun-fd <fd>                        File descriptor of the tun interface
@@ -168,9 +212,10 @@ Options:
   -h, --help                               Print help
   -V, --version                            Print version
 ```
-Currently, tun2proxy supports HTTP, SOCKS4/SOCKS4a and SOCKS5. A proxy is supplied to the `--proxy` argument in the
+Currently, tun2proxy supports HTTP, SOCKS4/SOCKS4a, SOCKS5 and VMess. A proxy is supplied to the `--proxy` argument in the
 URL format. For example, an HTTP proxy at `1.2.3.4:3128` with a username of `john.doe` and a password of `secret` is
-supplied as `--proxy http://john.doe:secret@1.2.3.4:3128`. This works analogously to curl's `--proxy` argument.
+supplied as `--proxy http://john.doe:secret@1.2.3.4:3128`. For VMess, the UUID should be provided as the username:
+`--proxy vmess://550e8400-e29b-41d4-a716-446655440000@example.com:10086`. This works analogously to curl's `--proxy` argument.
 
 ## Container Support
 ### Docker

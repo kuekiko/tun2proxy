@@ -23,9 +23,10 @@ fn about_info() -> &'static str {
 #[command(author, version = version_info!(), about = about_info(), long_about = None)]
 pub struct Args {
     /// Proxy URL in the form proto://[username[:password]@]host:port,
-    /// where proto is one of socks4, socks5, http.
+    /// where proto is one of socks4, socks5, http, vmess.
     /// Username and password are encoded in percent encoding. For example:
     /// socks5://myname:pass%40word@127.0.0.1:1080
+    /// vmess://uuid@127.0.0.1:1080
     #[arg(short, long, value_parser = |s: &str| ArgProxy::try_from(s), value_name = "URL")]
     pub proxy: ArgProxy,
 
@@ -438,6 +439,7 @@ pub enum ProxyType {
     Socks4,
     #[default]
     Socks5,
+    Vmess,
     None,
 }
 
@@ -448,6 +450,7 @@ impl TryFrom<&str> for ProxyType {
             "http" => Ok(ProxyType::Http),
             "socks4" => Ok(ProxyType::Socks4),
             "socks5" => Ok(ProxyType::Socks5),
+            "vmess" => Ok(ProxyType::Vmess),
             "none" => Ok(ProxyType::None),
             scheme => Err(Error::from(&format!("`{scheme}` is an invalid proxy type"))),
         }
@@ -460,6 +463,7 @@ impl std::fmt::Display for ProxyType {
             ProxyType::Socks4 => write!(f, "socks4"),
             ProxyType::Socks5 => write!(f, "socks5"),
             ProxyType::Http => write!(f, "http"),
+            ProxyType::Vmess => write!(f, "vmess"),
             ProxyType::None => write!(f, "none"),
         }
     }

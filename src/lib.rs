@@ -6,6 +6,7 @@ use crate::{
     no_proxy::NoProxyManager,
     session_info::{IpProtocol, SessionInfo},
     virtual_dns::VirtualDns,
+    vmess::VmessProxyManager,
 };
 use ipstack::{IpStackStream, IpStackTcpStream, IpStackUdpStream};
 use proxy_handler::{ProxyHandler, ProxyHandlerManager};
@@ -44,21 +45,22 @@ pub use general_api::general_run_async;
 
 mod android;
 mod args;
-mod directions;
+pub mod directions;
 mod dns;
 mod dump_logger;
 mod error;
 mod general_api;
 mod http;
 mod no_proxy;
-mod proxy_handler;
-mod session_info;
+pub mod proxy_handler;
+pub mod session_info;
 pub mod socket_transfer;
 mod socks;
 mod traffic_status;
 #[cfg(feature = "udpgw")]
 pub mod udpgw;
 mod virtual_dns;
+pub mod vmess;
 #[doc(hidden)]
 pub mod win_svc;
 
@@ -225,6 +227,18 @@ where
         ProxyType::Socks5 => Arc::new(SocksProxyManager::new(server_addr, V5, key)),
         ProxyType::Socks4 => Arc::new(SocksProxyManager::new(server_addr, V4, key)),
         ProxyType::Http => Arc::new(HttpManager::new(server_addr, key)),
+        ProxyType::Vmess => {
+            // For VMess, we expect the username to be the UUID
+            let user_id = if let Some(creds) = key {
+                uuid::Uuid::parse_str(&creds.username)
+                    .map_err(|e| Error::from(&format!("Invalid VMess UUID: {}", e)))?
+            } else {
+                return Err(Error::from("VMess requires a UUID in the username field").into());
+            };
+
+            let config = vmess::VmessConfig::new(user_id);
+            Arc::new(VmessProxyManager::new(server_addr, config))
+        }
         ProxyType::None => Arc::new(NoProxyManager::new()),
     };
 
